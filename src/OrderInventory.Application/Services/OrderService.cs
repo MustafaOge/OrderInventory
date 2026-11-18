@@ -68,11 +68,10 @@ public class OrderService(
 
         foreach (var item in order.OrderItems)
         {
-            var product = await productRepository.GetByIdAsync(item.ProductId);
-            if (product != null)
+            if (item.Product != null)
             {
-                product.StockQuantity += item.Quantity;
-                await productRepository.UpdateAsync(product);
+                item.Product.StockQuantity += item.Quantity;
+                await productRepository.UpdateAsync(item.Product);
             }
         }
 

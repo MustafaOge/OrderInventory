@@ -31,6 +31,7 @@ public class ProductService(IProductRepository repository, IMapper mapper, IUnit
     public async Task DeleteAsync(int id)
     {
         await repository.DeleteAsync(id);
+        await unitOfWork.SaveChangesAsync();
     }
 
     public async Task<PagedResult<ProductDto>> GetAllProducts(GetAllProductsRequest request)
@@ -63,9 +64,14 @@ public class ProductService(IProductRepository repository, IMapper mapper, IUnit
 
     public async Task UpdateAsync(UpdateProductDto updateProductDto)
     {
-        var updateProduct = mapper.Map<Product>(updateProductDto);
-        await repository.UpdateAsync(updateProduct);
-        await unitOfWork.SaveChangesAsync();
+        // Entity'yi DB'den yükle: böylece güncel xmin değeri, CreatedDate ve IsDeleted korunur.
+        var product = await repository.GetByIdAsync(updateProductDto.Id)
+            ?? throw new NotFoundException($"ID'si {updateProductDto.Id} olan ürün bulunamadı.");
 
+        // DTO'yu takip edilen (tracked) entity'nin üzerine uygula; EF sadece değişen alanları günceller.
+        mapper.Map(updateProductDto, product);
+        product.UpdatedDate = DateTime.UtcNow;
+
+        await unitOfWork.SaveChangesAsync();
     }
 }

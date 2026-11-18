@@ -10,7 +10,7 @@ public class CreateProductDto
     [Required]
     public string Sku { get; set; } = null!;
 
-    [Range(typeof(decimal), "0.0000000000000000000000000001", "79228162514264337593543950335")]
+    [Range(typeof(decimal), "1", "999999999999")]
     public decimal Price { get; set; }
 
     [Range(0, int.MaxValue)]
