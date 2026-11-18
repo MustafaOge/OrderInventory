@@ -30,8 +30,8 @@ public class OrderServiceTests
     public async Task CreateOrder_AvailableStock_CreatesOrderAndSavesChanges()
     {
         // Arrange
-        var product = new Product { Id = 1, Name = "Widget", StockQuantity = 8 };
-        var createOrder = CreateOrderDto(product.Id, quantity: 3, unitPrice: 12.50m);
+        var product = new Product { Id = 1, Name = "Widget", Price = 12.50m, StockQuantity = 8 };
+        var createOrder = CreateOrderDto(product.Id, quantity: 3);
         _productRepository
             .Setup(repository => repository.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
             .ReturnsAsync([product]);
@@ -56,7 +56,7 @@ public class OrderServiceTests
     {
         // Arrange
         var product = new Product { Id = 1, Name = "Widget", StockQuantity = 1 };
-        var createOrder = CreateOrderDto(product.Id, quantity: -10, unitPrice: 12.50m);
+        var createOrder = CreateOrderDto(product.Id, quantity: -10);
         _productRepository
             .Setup(repository => repository.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
             .ReturnsAsync([product]);
@@ -78,7 +78,7 @@ public class OrderServiceTests
     {
         // Arrange
         var product = new Product { Id = 1, Name = "Widget", StockQuantity = 2 };
-        var createOrder = CreateOrderDto(product.Id, quantity: 3, unitPrice: 12.50m);
+        var createOrder = CreateOrderDto(product.Id, quantity: 3);
         _productRepository
             .Setup(repository => repository.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
             .ReturnsAsync([product]);
@@ -153,11 +153,11 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrder_ProvidedUnitPrice_CopiesPriceToOrderItem()
+    public async Task CreateOrder_UsesProductPriceAndServerManagedOrderFields()
     {
         // Arrange
-        var product = new Product { Id = 1, Name = "Widget", StockQuantity = 8 };
-        var createOrder = CreateOrderDto(product.Id, quantity: 1, unitPrice: 12.50m);
+        var product = new Product { Id = 1, Name = "Widget", Price = 8.75m, StockQuantity = 8 };
+        var createOrder = CreateOrderDto(product.Id, quantity: 2);
         Order? addedOrder = null;
         _productRepository
             .Setup(repository => repository.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
@@ -175,7 +175,10 @@ public class OrderServiceTests
 
         // Assert
         Assert.NotNull(addedOrder);
-        Assert.Equal(12.50m, Assert.Single(addedOrder.OrderItems).UnitPrice);
+        Assert.Equal(8.75m, Assert.Single(addedOrder.OrderItems).UnitPrice);
+        Assert.Equal(17.50m, addedOrder.TotalAmount);
+        Assert.Equal(OrderStatus.Pending, addedOrder.Status);
+        Assert.NotEqual(default, addedOrder.CreatedAt);
     }
 
     [Fact]
@@ -207,8 +210,8 @@ public class OrderServiceTests
                 ? Task.FromResult(1)
                 : Task.FromException<int>(new DbUpdateConcurrencyException("Concurrent stock update.")));
 
-        var firstOrder = CreateOrderDto(productId: 1, quantity: 1, unitPrice: 12.50m);
-        var secondOrder = CreateOrderDto(productId: 1, quantity: 1, unitPrice: 12.50m);
+        var firstOrder = CreateOrderDto(productId: 1, quantity: 1);
+        var secondOrder = CreateOrderDto(productId: 1, quantity: 1);
 
         // Act
         var outcomes = await Task.WhenAll(
@@ -236,15 +239,13 @@ public class OrderServiceTests
         }
     }
 
-    private static CreateOrderDto CreateOrderDto(int productId, int quantity, decimal unitPrice) =>
+    private static CreateOrderDto CreateOrderDto(int productId, int quantity) =>
         new()
         {
-            CreatedAt = DateTime.UtcNow,
             OrderItems = [new CreateOrderItemDto
             {
                 ProductId = productId,
-                Quantity = quantity,
-                UnitPrice = unitPrice
+                Quantity = quantity
             }]
         };
 }

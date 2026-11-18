@@ -18,9 +18,13 @@ public class OrderService(
 
     public async Task CreateAsync(CreateOrderDto createOrderDto)
     {
-
         var productIds = createOrderDto.OrderItems.Select(i => i.ProductId).Distinct().ToList();
         var products = await productRepository.GetByIdsAsync(productIds);
+        var order = new Order
+        {
+            CreatedAt = DateTime.UtcNow,
+            Status = OrderStatus.Pending
+        };
 
         foreach (var item in createOrderDto.OrderItems)
         {
@@ -32,8 +36,16 @@ public class OrderService(
             if (product.StockQuantity < item.Quantity)
                 throw new InsufficientStockException($"Insufficient stock for product {product.Name}. Available: {product.StockQuantity}, Requested: {item.Quantity}");
             product.StockQuantity -= item.Quantity;
+
+            order.OrderItems.Add(new OrderItem
+            {
+                ProductId = product.Id,
+                Quantity = item.Quantity,
+                UnitPrice = product.Price
+            });
+            order.TotalAmount += product.Price * item.Quantity;
         }
-        var order = mapper.Map<Order>(createOrderDto);
+
         await orderRepository.AddAsync(order);
         await unitOfWork.SaveChangesAsync();
     }
