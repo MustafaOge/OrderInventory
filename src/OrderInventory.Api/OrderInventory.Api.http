@@ -1,0 +1,13 @@
+@OrderInventory.Api_HostAddress = http://localhost:5270
+
+### Get a page of products
+GET {{OrderInventory.Api_HostAddress}}/api/Product/GetAllProducts?pageNumber=1&pageSize=10
+Accept: application/json
+
+###
+
+### Search products by name
+GET {{OrderInventory.Api_HostAddress}}/api/Product/GetAllProducts?pageNumber=1&pageSize=10&searchName=coffee
+Accept: application/json
+
+###
