@@ -98,19 +98,18 @@ public class OrderServiceTests
     public async Task CancelOrder_ActiveOrder_RestoresStockAndSavesChanges()
     {
         // Arrange
+        // GetByIdWithItemsAsync, ürünleri Include/ThenInclude ile yükler;
+        // test verisi de bu grafı (OrderItem.Product dolu) temsil etmeli.
+        var product = new Product { Id = 1, StockQuantity = 4 };
         var order = new Order
         {
             Id = 10,
             Status = OrderStatus.Confirmed,
-            OrderItems = [new OrderItem { ProductId = 1, Quantity = 3 }]
+            OrderItems = [new OrderItem { ProductId = product.Id, Quantity = 3, Product = product }]
         };
-        var product = new Product { Id = 1, StockQuantity = 4 };
         _orderRepository
             .Setup(repository => repository.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _productRepository
-            .Setup(repository => repository.GetByIdAsync(product.Id))
-            .ReturnsAsync(product);
         _productRepository
             .Setup(repository => repository.UpdateAsync(product))
             .Returns(Task.CompletedTask);
