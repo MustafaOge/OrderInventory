@@ -67,6 +67,20 @@ docker compose down
 
 Bu komut PostgreSQL verilerini volume'da tutar. Yerel veritabanını da silmek için `docker compose down -v` kullanılabilir; bu komut volume'daki verileri kalıcı olarak siler.
 
+### Docker olmadan (`dotnet run`) çalıştırma
+
+`appsettings.json` içinde veritabanı şifresi tutulmaz. Yerel geliştirmede bağlantı cümlesi [user-secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) ile verilir (yalnızca `Development` ortamında okunur):
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Host=localhost;Port=5432;Database=OrderInventoryDb;Username=postgres;Password=<şifreniz>" \
+  --project src/OrderInventory.Api
+
+dotnet run --project src/OrderInventory.Api
+```
+
+Docker Compose ile çalışırken bağlantı cümlesi `ConnectionStrings__DefaultConnection` ortam değişkeniyle `.env` dosyasındaki değerlerden oluşturulur; user-secrets gerekmez.
+
 ## Testler
 
 Unit testleri çalıştırmak için:
