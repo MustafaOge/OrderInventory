@@ -72,4 +72,76 @@ public class ProductServiceTests
         _repository.Verify(repository => repository.AddAsync(It.IsAny<Product>()), Times.Never);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateProduct_ExistingProduct_AppliesChangesToLoadedEntityAndSaves()
+    {
+        // Arrange
+        var createdDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var existing = new Product
+        {
+            Id = 5,
+            Name = "Old name",
+            Sku = "OLD-1",
+            Price = 10m,
+            StockQuantity = 3,
+            CreatedDate = createdDate
+        };
+        var request = new UpdateProductDto
+        {
+            Id = existing.Id,
+            Name = "New name",
+            Sku = "NEW-1",
+            Price = 20m,
+            StockQuantity = 7
+        };
+        _repository
+            .Setup(repository => repository.GetByIdAsync(existing.Id))
+            .ReturnsAsync(existing);
+
+        // Act
+        await _sut.UpdateAsync(request);
+
+        // Assert
+        Assert.Equal("New name", existing.Name);
+        Assert.Equal("NEW-1", existing.Sku);
+        Assert.Equal(20m, existing.Price);
+        Assert.Equal(7, existing.StockQuantity);
+        Assert.Equal(createdDate, existing.CreatedDate);
+        Assert.False(existing.IsDeleted);
+        Assert.NotNull(existing.UpdatedDate);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_MissingProduct_ThrowsNotFoundExceptionAndDoesNotSave()
+    {
+        // Arrange
+        var request = new UpdateProductDto { Id = 404, Name = "Widget", Sku = "WIDGET-1", Price = 5m };
+        _repository
+            .Setup(repository => repository.GetByIdAsync(request.Id))
+            .ReturnsAsync((Product?)null!);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => _sut.UpdateAsync(request));
+
+        // Assert
+        Assert.Contains("404", exception.Message);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteProduct_ExistingId_SoftDeletesAndPersistsChanges()
+    {
+        // Arrange
+        const int productId = 5;
+
+        // Act
+        await _sut.DeleteAsync(productId);
+
+        // Assert
+        _repository.Verify(repository => repository.DeleteAsync(productId), Times.Once);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
