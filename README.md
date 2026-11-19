@@ -27,25 +27,19 @@
 
 2. `.env` içindeki `POSTGRES_PASSWORD` değerini yerel kullanım için değiştirin. `.env` dosyası Git'e ve Docker build context'ine dahil edilmez.
 
-3. PostgreSQL'i başlatın:
+3. API'yi ve PostgreSQL'i derleyip başlatın:
 
    ```bash
-   docker compose up -d db
+   docker compose up -d --build
    ```
 
-4. EF Core migration'larını uygulayın:
+4. Veritabanı ilk kez oluşturuluyorsa veya yeni bir EF Core migration'ı eklendiyse migration'ları uygulayın:
 
    ```bash
    docker compose run --build --rm migrate
    ```
 
-5. API'yi derleyip başlatın:
-
-   ```bash
-   docker compose up --build -d api
-   ```
-
-Compose, API'yi `db` servis adına bağlar ve PostgreSQL'in health check'inin başarılı olmasını bekler. Migration'lar uygulama başlarken otomatik çalışmaz; yeni migration eklendiğinde 4. adımı tekrar çalıştırın.
+Mevcut ve migration'ları uygulanmış bir veritabanıyla günlük kullanımda ilk komut yeterlidir. İlk kurulumda migration komutunu da çalıştırın; Compose migration'ları API başlarken otomatik uygulamaz. API, PostgreSQL'in health check'i başarılı olduktan sonra başlar.
 
 ### Adresler ve servis yönetimi
 
@@ -98,7 +92,6 @@ PostgreSQL concurrency entegrasyon testi Testcontainers ile geçici bir PostgreS
 - ** Unit of Work:** `IUnitOfWork` yalnızca `SaveChangesAsync` çağrısını temsil eder. Repository'lerin aynı scoped `AppDbContext` üzerindeki değişiklikleri tek noktadan kaydedilir; change tracking ve transaction yönetimi EF Core'a bırakılır.
 - **Stok ve siparişin birlikte kaydedilmesi:** Sipariş oluşturulurken stok düşürme ve sipariş ekleme aynı `SaveChangesAsync` çağrısında kaydedilir. EF Core'un ilişkisel sağlayıcısı bu değişiklikleri tek transaction içinde uygular; işlem başarısız olursa birlikte geri alınırlar.
 - **Ürün stoğunda concurrency kontrolü:** PostgreSQL'in her satır güncellemesinde değiştirdiği `xmin` sistem sütunu, ürünler için optimistic concurrency token olarak kullanılır. Eski stok verisine dayalı güncelleme `DbUpdateConcurrencyException` üretir; API bunu `409 Conflict` olarak yanıtlar.
-- **Sipariş anındaki fiyat:** `OrderItem.UnitPrice` alanı, ürünün ileride değişebilecek fiyatından bağımsız olarak sipariş fiyatını saklamak için kullanılır. Ancak mevcut uygulama bu değeri istemci DTO'sundan kopyalar; fiyatı sunucu tarafında ürün kaydından hesaplamaz veya doğrulamaz.
 
 ## Bilinen eksikler
 
@@ -107,5 +100,4 @@ PostgreSQL concurrency entegrasyon testi Testcontainers ile geçici bir PostgreS
 - Concurrency koruması ürün satırlarında mevcut; otomatik retry politikası ve tüm iş akışlarını kapsayan daha geniş concurrency testleri yok.
 - Redis cache ve RabbitMQ mesajlaşması eklenmedi.
 - Entegrasyon test kapsamı sınırlı; PostgreSQL testi şu anda eşzamanlı son stok siparişi senaryosuna odaklanıyor. API uçtan uca senaryoları da artırılmalı.
-- `OrderService.DeleteAsync` henüz uygulanmadı.
 - Docker Compose ayarları yerel geliştirme içindir. Production için TLS, secret yönetimi ve merkezi loglama/izleme ayrıca yapılandırılmalı.
